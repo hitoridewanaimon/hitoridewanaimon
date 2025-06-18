@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".", // ←これが非常に重要です！プロジェクトのルートを基準にするという意味
+    "paths": {
+      "@/components/*": ["components/*"],
+      "@/lib/*": ["lib/*"]
+      // ここに以前追加した "@/firebase": ["firebase.js"] は不要です。
+      // もし残っていたら削除してください。
+    }
+  }
+}
