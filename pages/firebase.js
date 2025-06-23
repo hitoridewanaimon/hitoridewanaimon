@@ -1,22 +1,26 @@
-// Firebase SDK の初期化
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore"; // Firestoreを使うために追加
+// pages/firebase.js の修正
 
-// あなたのFirebaseプロジェクトの設定情報
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+
 const firebaseConfig = {
-  apiKey: "AIzaSyB7hj1ShwNgblj_Ukv6N7lxB64gTJ-A0uo", // ← あなたの情報に置き換わります
-  authDomain: "hitoridewanaimon.firebaseapp.com",
-  projectId: "hitoridewanaimon",
-  storageBucket: "hitoridewanaimon.firebasestorage.app",
-  messagingSenderId: "401986398432",
-  appId: "1:401986398432:web:0ccd25277b4d6c513a4885"
+  apiKey:  "AIzaSyB7hj1ShwNgblj_Ukv6N7lxB64gTJ-A0uo", // 例: "AIzaSy...XYZ"
+  authDomain: "hitoridewanaimon.firebaseapp.com", // 例: "my-project-12345.firebaseapp.com"
+  projectId: "hitoridewanaimon",// 例: "my-project-12345"
+  storageBucket: "hitoridewanaimon.firebasestorage.app", // 例: "my-project-12345.appspot.com"
+  messagingSenderId:  "401986398432",  // ここが問題の箇所。値が文字列であることを確認し、引用符で囲む
+  appId: "1:401986398432:web:e22b5ebe825ce923a4885", // 例: "1:..."
+  // measurementId: "G-XXXXXXXXXX" // Analyticsを使う場合
 };
 
 // Firebaseアプリを初期化
 const app = initializeApp(firebaseConfig);
 
-// Firestoreデータベースへの参照を取得
-const db = getFirestore(app);
+// 各Firebaseサービスへの参照を取得し、エクスポートします
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
 
-// 他のファイルから利用できるようにエクスポート
-export { db };
+export default app;

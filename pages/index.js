@@ -1,72 +1,130 @@
-import React, { useState, useEffect } from 'react';
-import { db } from './firebase'; // Firebaseのパスを確認
-// Firebaseからデータを読み込むための機能
-import { collection, query, getDocs, doc, updateDoc } from 'firebase/firestore'; // ← updateDocを追加しました！
+// pages/index.js
+import { useState, useEffect } from 'react';
+import { collection, getDocs, addDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { db } from './firebase'; // firebase.jsからdbインスタンスをインポート
 
 export default function Home() {
-  const [cheerCount, setCheerCount] = useState(0);
-  const [post, setPost] = useState(null);
+  const [posts, setPosts] = useState([]); // 投稿を格納するステート
+  const [newPostContent, setNewPostContent] = useState(''); // 新しい投稿の入力内容
 
-  // アプリが読み込まれたときに、一度だけデータベースから投稿を読み込むための部分
+  // ★ 1. 既存の投稿を読み込む仕組み（アプリ起動時と投稿・応援後に更新）
   useEffect(() => {
-    const fetchPost = async () => {
-      const q = query(collection(db, "posts"));
-      const querySnapshot = await getDocs(q);
+    const fetchPosts = async () => {
+      // 'posts'コレクションからデータを取得し、'createdAt'の昇順（古いものが下）で並べ替え
+      const postsCollection = collection(db, 'posts');
+      // orderBy('createdAt', 'asc') で古い投稿が下に表示されるようにします
+      const q = query(postsCollection, orderBy('createdAt', 'asc')); 
 
-      if (!querySnapshot.empty) {
-        // 最初のドキュメント（今回作成した「最初の投稿」）を取得
-        const docData = querySnapshot.docs[0]; // doc を docData に変更 (名前の衝突を避けるため)
-        setPost({ id: docData.id, ...docData.data() }); // 投稿IDとデータをセット
-        setCheerCount(docData.data().cheers); // データベースからの応援カウントを初期値に設定
-      }
+      const querySnapshot = await getDocs(q);
+      const postsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setPosts(postsData);
     };
 
-    fetchPost();
-  }, []);
+    fetchPosts(); // コンポーネントがマウントされたときに投稿をフェッチ
+  }, []); // ページ読み込み時に一度だけ実行
 
-  // 応援ボタンがクリックされたときの処理
-  const handleCheerClick = async () => { // async を追加しました！
-    // まず、現在のカウントを1増やす
-    const newCheerCount = cheerCount + 1;
-    setCheerCount(newCheerCount);
-    console.log("応援するね！ボタンが押されました！現在のカウント:", newCheerCount);
+  // ★ 2. 新しい書き込みを投稿する仕組み
+  const handlePostSubmit = async (e) => {
+    e.preventDefault(); // フォームのデフォルト送信を防ぐ
 
-    // データベースに新しいカウントを保存する
-    if (post && post.id) { // postデータとIDがあることを確認
-      const postRef = doc(db, "posts", post.id); // 参照を取得
-      await updateDoc(postRef, { // データベースを更新
-        cheers: newCheerCount
+    if (newPostContent.trim() === '') {
+      alert('投稿内容を入力してください。');
+      return;; // ここで処理を終了
+    }
+
+    try {
+      // 'posts'コレクションに新しいドキュメントを追加
+      await addDoc(collection(db, 'posts'), {
+        content: newPostContent, // 投稿内容
+        cheerCount: 0,           // 応援カウントの初期値
+        createdAt: new Date()    // 投稿日時（この日時で並べ替えます）
       });
-      console.log("応援カウントをデータベースに保存しました:", newCheerCount);
+      setNewPostContent(''); // 入力フィールドをクリア
+
+      // 投稿後、投稿リストを再取得して表示を更新
+      const postsCollection = collection(db, 'posts');
+      const q = query(postsCollection, orderBy('createdAt', 'asc')); // 再度昇順に並べ替え
+      const querySnapshot = await getDocs(q);
+      const updatedPostsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setPosts(updatedPostsData);
+      alert('投稿が完了しました！');
+    } catch (error) {
+      console.error('投稿エラー:', error);
+      alert('投稿中にエラーが発生しました。');
     }
   };
 
-  // 投稿データがまだ読み込まれていない場合は、ローディング表示
-  if (!post) {
-    return (
-      <div style={{ fontFamily: 'sans-serif', padding: 40, textAlign: 'center' }}>
-        <h1>読み込み中...</h1>
-      </div>
-    );
-  }
+// ★ 3. 応援するねボタンが押されるたびにカウントされる仕組み
+  const handleCheer = async (postId, currentCount) => {
+    // ↓↓↓↓↓↓ ここに新しい行を追加します ↓↓↓↓↓↓
+    console.log("応援ボタンがクリックされました！ postId:", postId, "現在のカウント:", currentCount); // ★★★ この行だけを追加 ★★★
+    // ↑↑↑↑↑↑ ここに新しい行を追加しました ↑↑↑↑↑↑
+    try { // ← ここから元の try ブロックが始まります
 
+      // 特定の投稿ドキュメントへの参照を取得
+      const postRef = doc(db, 'posts', postId);
+      // カウントを1増やす
+      await updateDoc(postRef, {
+        cheerCount: currentCount + 1
+      });
+      // 画面上の表示を更新するため、postsステートも更新
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId ? { ...post, cheerCount: currentCount + 1 } : post
+        )
+      );
+    } catch (error) {
+      console.error('応援エラー:', error);
+      alert('応援中にエラーが発生しました。');
+    }
+  };
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: 40, textAlign: 'center' }}>
+    <div style={{ maxWidth: '600px', margin: 'auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>ひとりではないもん。</h1>
       <p>ようこそ、あなたは一人じゃない。</p>
-      <div style={{ marginTop: 30, padding: 20, border: '1px solid #eee', borderRadius: 8, backgroundColor: '#f9f9f9' }}>
-        <p><strong>最初の投稿</strong></p>
-        <p>{post.content}</p>
-        <button
-          onClick={handleCheerClick}
-          style={{ padding: '10px 20px', borderRadius: 5, border: 'none', backgroundColor: '#a4d4b3', color: 'white', cursor: 'pointer', fontSize: '1em' }}
-        >
-          応援するね！ ({cheerCount})
-        </button>
+
+      {/* 新しい書き込みフォーム */}
+      <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <h2>新しい悩みを投稿する</h2>
+        <form onSubmit={handlePostSubmit}>
+          <textarea
+            value={newPostContent}
+            onChange={(e) => setNewPostContent(e.target.value)}
+            placeholder="あなたの悩みを書いてみよう..."
+            style={{ width: 'calc(100% - 16px)', minHeight: '100px', marginBottom: '10px', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', resize: 'vertical' }}
+          />
+          <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px' }}>
+            投稿する
+          </button>
+        </form>
       </div>
-      <button style={{ marginTop: 20, padding: '15px 30px', borderRadius: 25, border: 'none', backgroundColor: '#6a9c8f', color: 'white', cursor: 'pointer', fontSize: '1.2em' }}>
-        ＋ 新しい悩みを投稿する
-      </button>
+
+      {/* 投稿リスト */}
+      <h2>みんなの悩み</h2>
+      {posts.length === 0 ? (
+        <p>まだ投稿がありません。最初の投稿をしてみましょう！</p>
+      ) : (
+        posts.map((post) => (
+          <div key={post.id} style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', marginBottom: '15px', backgroundColor: '#f9f9f9', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <p style={{ fontSize: '1.1em', marginBottom: '10px', lineHeight: '1.5' }}>{post.content}</p>
+            <p style={{ fontSize: '0.8em', color: '#666', marginBottom: '10px' }}>
+              投稿日時: {post.createdAt ? new Date(post.createdAt.toDate()).toLocaleString() : '日付不明'}
+            </p>
+            <button
+              onClick={() => handleCheer(post.id, post.cheerCount)}
+              style={{ padding: '8px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+            >
+              応援するね！ ({post.cheerCount})
+            </button>
+          </div>
+        ))
+      )}
     </div>
   );
 }
