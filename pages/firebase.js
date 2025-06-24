@@ -1,26 +1,24 @@
-// pages/firebase.js の修正
+// import文はそのまま
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-
+// Firebaseの設定を環境変数から取得
 const firebaseConfig = {
-  apiKey:  "AIzaSyB7hj1ShwNgblj_Ukv6N7lxB64gTJ-A0uo", // 例: "AIzaSy...XYZ"
-  authDomain: "hitoridewanaimon.firebaseapp.com", // 例: "my-project-12345.firebaseapp.com"
-  projectId: "hitoridewanaimon",// 例: "my-project-12345"
-  storageBucket: "hitoridewanaimon.firebasestorage.app", // 例: "my-project-12345.appspot.com"
-  messagingSenderId:  "401986398432",  // ここが問題の箇所。値が文字列であることを確認し、引用符で囲む
-  appId: "1:401986398432:web:e22b5ebe825ce923a4885", // 例: "1:..."
-  // measurementId: "G-XXXXXXXXXX" // Analyticsを使う場合
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  // measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID, // Analyticsを使う場合
 };
 
-// Firebaseアプリを初期化
+// Firebaseを初期化
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-// 各Firebaseサービスへの参照を取得し、エクスポートします
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-
-export default app;
+export { auth, db, storage };
