@@ -1,7 +1,7 @@
 // pages/index.js
 import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
-import { db } from './utils/firebase'; // firebase.jsからdbインスタンスをインポート
+import { db } from '../utils/firebase'; // firebase.jsからdbインスタンスをインポート
 
 export default function Home() {
   const [posts, setPosts] = useState([]); // 投稿を格納するステート
