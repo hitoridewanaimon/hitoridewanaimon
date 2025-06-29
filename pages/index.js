@@ -88,6 +88,10 @@ export default function Home() {
     <div style={{ maxWidth: '600px', margin: 'auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>ひとりではないもん。</h1>
       <p>ようこそ、あなたは一人じゃない。</p>
+      {/* ここに新しく追加する行 */}
+    <p style={{ fontSize: '0.9em', color: '#555', marginTop: '5px' }}>
+      運営: <a href="https://x.com/Sns1126940Sns" target="_blank" rel="noopener noreferrer" style={{ color: '#1DA1F2', textDecoration: 'none' }}>@あなたのTwitterユーザー名</a>
+    </p>
 
       {/* 新しい書き込みフォーム */}
       <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
