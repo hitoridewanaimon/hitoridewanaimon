@@ -13,7 +13,7 @@ export default function Home() {
       // 'posts'コレクションからデータを取得し、'createdAt'の昇順（古いものが下）で並べ替え
       const postsCollection = collection(db, 'posts');
       // orderBy('createdAt', 'asc') で古い投稿が下に表示されるようにします
-      const q = query(postsCollection, orderBy('createdAt', 'asc')); 
+      const q = query(postsCollection, orderBy('createdAt', 'desc')); 
 
       const querySnapshot = await getDocs(q);
       const postsData = querySnapshot.docs.map(doc => ({
@@ -46,7 +46,7 @@ export default function Home() {
 
       // 投稿後、投稿リストを再取得して表示を更新
       const postsCollection = collection(db, 'posts');
-      const q = query(postsCollection, orderBy('createdAt', 'asc')); // 再度昇順に並べ替え
+      const q = query(postsCollection, orderBy('createdAt', 'desc')); // 再度昇順に並べ替え
       const querySnapshot = await getDocs(q);
       const updatedPostsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
