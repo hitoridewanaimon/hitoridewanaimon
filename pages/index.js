@@ -1,20 +1,28 @@
 // pages/index.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, addDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '../utils/firebase'; // firebase.jsからdbインスタンスをインポート
+import Image from 'next/image'; // イラスト表示のためにnext/imageをインポート
 
 export default function Home() {
   const [posts, setPosts] = useState([]); // 投稿を格納するステート
   const [newPostContent, setNewPostContent] = useState(''); // 新しい投稿の入力内容
 
-  // ★ 1. 既存の投稿を読み込む仕組み（アプリ起動時と投稿・応援後に更新）
-  useEffect(() => {
-    const fetchPosts = async () => {
-      // 'posts'コレクションからデータを取得し、'createdAt'の昇順（古いものが下）で並べ替え
-      const postsCollection = collection(db, 'posts');
-      // orderBy('createdAt', 'asc') で古い投稿が下に表示されるようにします
-      const q = query(postsCollection, orderBy('createdAt', 'desc')); 
+  // Audioオブジェクトを保持するためのRefを作成
+  const audioRef = useRef(null);
 
+  // コンポーネントのマウント時に投稿をフェッチし、Audioオブジェクトを初期化
+  useEffect(() => {
+    // Audioオブジェクトを作成
+    // ★ 修正箇所：効果音ファイルのパスを修正
+    // publicフォルダ直下の 'hitoridewanaimonpublicsounds' フォルダ内の 'cheer_sound.mp3' を想定
+    audioRef.current = new Audio('/hitoridewanaimonpublicsounds/cheer_sound.mp3'); // ← このパスで試します
+    audioRef.current.volume = 0.5; // 例: 半分の音量に設定
+
+    const fetchPosts = async () => {
+      const postsCollection = collection(db, 'posts');
+      // 'createdAt'の降順（新しいものが上）で並べ替え
+      const q = query(postsCollection, orderBy('createdAt', 'desc')); 
       const querySnapshot = await getDocs(q);
       const postsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
@@ -23,30 +31,29 @@ export default function Home() {
       setPosts(postsData);
     };
 
-    fetchPosts(); // コンポーネントがマウントされたときに投稿をフェッチ
+    fetchPosts(); // 投稿データをフェッチ
   }, []); // ページ読み込み時に一度だけ実行
 
-  // ★ 2. 新しい書き込みを投稿する仕組み
+  // 新しい書き込みを投稿する仕組み
   const handlePostSubmit = async (e) => {
     e.preventDefault(); // フォームのデフォルト送信を防ぐ
 
     if (newPostContent.trim() === '') {
       alert('投稿内容を入力してください。');
-      return;; // ここで処理を終了
+      return; 
     }
 
     try {
-      // 'posts'コレクションに新しいドキュメントを追加
       await addDoc(collection(db, 'posts'), {
-        content: newPostContent, // 投稿内容
-        cheerCount: 0,           // 応援カウントの初期値
-        createdAt: new Date()    // 投稿日時（この日時で並べ替えます）
+        content: newPostContent,
+        cheerCount: 0,
+        createdAt: new Date()
       });
       setNewPostContent(''); // 入力フィールドをクリア
 
       // 投稿後、投稿リストを再取得して表示を更新
       const postsCollection = collection(db, 'posts');
-      const q = query(postsCollection, orderBy('createdAt', 'desc')); // 再度昇順に並べ替え
+      const q = query(postsCollection, orderBy('createdAt', 'desc')); // 投稿順を降順に統一
       const querySnapshot = await getDocs(q);
       const updatedPostsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
@@ -60,38 +67,55 @@ export default function Home() {
     }
   };
 
-// ★ 3. 応援するねボタンが押されるたびにカウントされる仕組み
-  const handleCheer = async (postId, currentCount) => {
-    // ↓↓↓↓↓↓ ここに新しい行を追加します ↓↓↓↓↓↓
-    console.log("応援ボタンがクリックされました！ postId:", postId, "現在のカウント:", currentCount); // ★★★ この行だけを追加 ★★★
-    // ↑↑↑↑↑↑ ここに新しい行を追加しました ↑↑↑↑↑↑
-    try { // ← ここから元の try ブロックが始まります
+  // 応援するねボタンが押されるたびにカウントされる仕組み
+  const handleCheer = async (postId, currentCount) => {
+    console.log("応援ボタンがクリックされました！ postId:", postId, "現在のカウント:", currentCount);
 
-      // 特定の投稿ドキュメントへの参照を取得
-      const postRef = doc(db, 'posts', postId);
-      // カウントを1増やす
-      await updateDoc(postRef, {
-        cheerCount: currentCount + 1
-      });
-      // 画面上の表示を更新するため、postsステートも更新
-      setPosts(prevPosts =>
-        prevPosts.map(post =>
-          post.id === postId ? { ...post, cheerCount: currentCount + 1 } : post
-        )
-      );
-    } catch (error) {
-      console.error('応援エラー:', error);
-      alert('応援中にエラーが発生しました。');
-    }
-  };
+    // 効果音を再生
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0; // 再生位置を最初に戻す（連続クリックで音が重なるのを防ぐ）
+      audioRef.current.play().catch(error => {
+        console.log("Audio playback prevented:", error);
+      });
+    }
+
+    try {
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        cheerCount: currentCount + 1
+      });
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId ? { ...post, cheerCount: currentCount + 1 } : post
+        )
+      );
+    } catch (error) {
+      console.error('応援エラー:', error);
+      alert('応援中にエラーが発生しました。');
+    }
+  };
+
   return (
     <div style={{ maxWidth: '600px', margin: 'auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>ひとりではないもん。</h1>
+      
+      {/* イラストを配置する部分 */}
+      {/* publicフォルダ直下の 'publicimages' フォルダ内の 'hitori_illustration.png' を想定 */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}>
+        <Image
+          src="/publicimages/hitori_illustration.png" // ★ 修正箇所：イラスト画像のパスを修正
+          alt="ひとりではないもん。イラスト" // 画像の代替テキスト
+          width={200} // 画像の幅をピクセルで指定 (適宜調整)
+          height={150} // 画像の高さをピクセルで指定 (適宜調整)
+          style={{ objectFit: 'contain' }} // 画像が指定サイズに収まるように調整
+        />
+      </div>
+
       <p>ようこそ、あなたは一人じゃない。</p>
-      {/* ここに新しく追加する行 */}
-    <p style={{ fontSize: '0.9em', color: '#555', marginTop: '5px' }}>
-      運営: <a href="https://x.com/Sns1126940Sns" target="_blank" rel="noopener noreferrer" style={{ color: '#1DA1F2', textDecoration: 'none' }}>@あなたのTwitterユーザー名</a>
-    </p>
+      {/* Twitterアカウントリンク */}
+      <p style={{ fontSize: '0.9em', color: '#555', marginTop: '5px' }}>
+        運営: <a href="https://x.com/Sns1126940Sns" target="_blank" rel="noopener noreferrer" style={{ color: '#1DA1F2', textDecoration: 'none' }}>@Sns1126940Sns</a>
+      </p>
 
       {/* 新しい書き込みフォーム */}
       <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
