@@ -1,27 +1,21 @@
-// pages/index.js
+// pages/index.js (修正後)
 import { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, addDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
-import { db } from '../utils/firebase'; // firebase.jsからdbインスタンスをインポート
-import Image from 'next/image'; // イラスト表示のためにnext/imageをインポート
+import { db } from '../utils/firebase';
+import Image from 'next/image';
 
 export default function Home() {
-  const [posts, setPosts] = useState([]); // 投稿を格納するステート
-  const [newPostContent, setNewPostContent] = useState(''); // 新しい投稿の入力内容
-
-  // Audioオブジェクトを保持するためのRefを作成
+  const [posts, setPosts] = useState([]);
+  const [newPostContent, setNewPostContent] = useState('');
   const audioRef = useRef(null);
 
-  // コンポーネントのマウント時に投稿をフェッチし、Audioオブジェクトを初期化
   useEffect(() => {
-    // Audioオブジェクトを作成
-    // ★ 修正箇所：効果音ファイルのパスを修正
-    // publicフォルダ直下の 'hitoridewanaimonpublicsounds' フォルダ内の 'cheer_sound.mp3' を想定
-    audioRef.current = new Audio('/hitoridewanaimonpublicsounds/cheer_sound.mp3'); // ← このパスで試します
-    audioRef.current.volume = 0.5; // 例: 半分の音量に設定
+    // Audioオブジェクトのパスを修正
+    audioRef.current = new Audio('/sounds/cheer_sound.mp3'); // ★ ここを修正
+    audioRef.current.volume = 0.5;
 
     const fetchPosts = async () => {
       const postsCollection = collection(db, 'posts');
-      // 'createdAt'の降順（新しいものが上）で並べ替え
       const q = query(postsCollection, orderBy('createdAt', 'desc')); 
       const querySnapshot = await getDocs(q);
       const postsData = querySnapshot.docs.map(doc => ({
@@ -31,29 +25,24 @@ export default function Home() {
       setPosts(postsData);
     };
 
-    fetchPosts(); // 投稿データをフェッチ
-  }, []); // ページ読み込み時に一度だけ実行
+    fetchPosts();
+  }, []);
 
-  // 新しい書き込みを投稿する仕組み
   const handlePostSubmit = async (e) => {
-    e.preventDefault(); // フォームのデフォルト送信を防ぐ
-
+    e.preventDefault();
     if (newPostContent.trim() === '') {
       alert('投稿内容を入力してください。');
       return; 
     }
-
     try {
       await addDoc(collection(db, 'posts'), {
         content: newPostContent,
         cheerCount: 0,
         createdAt: new Date()
       });
-      setNewPostContent(''); // 入力フィールドをクリア
-
-      // 投稿後、投稿リストを再取得して表示を更新
+      setNewPostContent('');
       const postsCollection = collection(db, 'posts');
-      const q = query(postsCollection, orderBy('createdAt', 'desc')); // 投稿順を降順に統一
+      const q = query(postsCollection, orderBy('createdAt', 'desc')); 
       const querySnapshot = await getDocs(q);
       const updatedPostsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
@@ -67,18 +56,14 @@ export default function Home() {
     }
   };
 
-  // 応援するねボタンが押されるたびにカウントされる仕組み
   const handleCheer = async (postId, currentCount) => {
     console.log("応援ボタンがクリックされました！ postId:", postId, "現在のカウント:", currentCount);
-
-    // 効果音を再生
     if (audioRef.current) {
-      audioRef.current.currentTime = 0; // 再生位置を最初に戻す（連続クリックで音が重なるのを防ぐ）
+      audioRef.current.currentTime = 0;
       audioRef.current.play().catch(error => {
         console.log("Audio playback prevented:", error);
       });
     }
-
     try {
       const postRef = doc(db, 'posts', postId);
       await updateDoc(postRef, {
@@ -99,25 +84,21 @@ export default function Home() {
     <div style={{ maxWidth: '600px', margin: 'auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>ひとりではないもん。</h1>
       
-      {/* イラストを配置する部分 */}
-      {/* publicフォルダ直下の 'publicimages' フォルダ内の 'hitori_illustration.png' を想定 */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}>
         <Image
-          src="/publicimages/hitori_illustration.png" // ★ 修正箇所：イラスト画像のパスを修正
-          alt="ひとりではないもん。イラスト" // 画像の代替テキスト
-          width={200} // 画像の幅をピクセルで指定 (適宜調整)
-          height={150} // 画像の高さをピクセルで指定 (適宜調整)
-          style={{ objectFit: 'contain' }} // 画像が指定サイズに収まるように調整
+          src="/images/hitori_illustration.png" // ★ ここを修正
+          alt="ひとりではないもん。イラスト"
+          width={200}
+          height={150}
+          style={{ objectFit: 'contain' }}
         />
       </div>
 
       <p>ようこそ、あなたは一人じゃない。</p>
-      {/* Twitterアカウントリンク */}
       <p style={{ fontSize: '0.9em', color: '#555', marginTop: '5px' }}>
         運営: <a href="https://x.com/Sns1126940Sns" target="_blank" rel="noopener noreferrer" style={{ color: '#1DA1F2', textDecoration: 'none' }}>@Sns1126940Sns</a>
       </p>
 
-      {/* 新しい書き込みフォーム */}
       <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
         <h2>新しい悩みを投稿する</h2>
         <form onSubmit={handlePostSubmit}>
@@ -133,7 +114,6 @@ export default function Home() {
         </form>
       </div>
 
-      {/* 投稿リスト */}
       <h2>みんなの悩み</h2>
       {posts.length === 0 ? (
         <p>まだ投稿がありません。最初の投稿をしてみましょう！</p>
